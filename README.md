@@ -38,3 +38,7 @@ python main.py
 ## Deployment
 
 This bot is configured for deployment on Railway.app.
+
+## Legal
+- [Terms of Service](TERMS_OF_SERVICE.md)
+- [Privacy Policy](PRIVACY_POLICY.md)
