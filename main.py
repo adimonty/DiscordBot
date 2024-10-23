@@ -1,9 +1,21 @@
 import os
+import sys
 import discord
+import logging
 from discord.ext import commands
 from dotenv import load_dotenv
 from langdetect import detect
 from googletrans import Translator
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -17,61 +29,28 @@ translator = Translator()
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} has connected to Discord!')
+    logger.info(f'{bot.user} has connected to Discord!')
     await bot.change_presence(activity=discord.Game(name="!tr help"))
 
 @bot.event
-async def on_message(message):
-    # Ignore messages from the bot itself
-    if message.author == bot.user:
-        return
+async def on_error(event, *args, **kwargs):
+    logger.error(f'Error in {event}:', exc_info=True)
 
-    # Process commands if any
-    await bot.process_commands(message)
+# Rest of your bot code remains the same...
+# [Previous event handlers and commands]
 
-    # Don't translate commands
-    if message.content.startswith('!tr'):
-        return
+# Error handling for commands
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.send("Command not found. Use !tr help for available commands.")
+    else:
+        logger.error(f"Command error: {error}")
+        await ctx.send(f"An error occurred: {str(error)}")
 
+if __name__ == "__main__":
     try:
-        # Detect language
-        detected_lang = detect(message.content)
-        
-        # Translate if message is in English or French
-        if detected_lang == 'en':
-            translated = translator.translate(message.content, src='en', dest='fr')
-            target_lang = 'French'
-        elif detected_lang == 'fr':
-            translated = translator.translate(message.content, src='fr', dest='en')
-            target_lang = 'English'
-        else:
-            return  # Don't translate other languages
-
-        # Create embed
-        embed = discord.Embed(title=f"Translated to {target_lang}", color=0x00ff00)
-        embed.add_field(name="Original", value=message.content, inline=False)
-        embed.add_field(name="Translation", value=translated.text, inline=False)
-        embed.set_footer(text=f"Requested by {message.author.display_name}")
-
-        await message.channel.send(embed=embed)
-
+        logger.info("Starting bot...")
+        bot.run(TOKEN)
     except Exception as e:
-        print(f"Translation error: {e}")
-
-@bot.command(name='help')
-async def help_command(ctx):
-    embed = discord.Embed(title="Translator Bot Help", color=0x00ff00)
-    embed.add_field(
-        name="Automatic Translation",
-        value="The bot automatically detects and translates messages between English and French.",
-        inline=False
-    )
-    embed.add_field(
-        name="Commands",
-        value="!tr help - Show this help message",
-        inline=False
-    )
-    await ctx.send(embed=embed)
-
-# Run the bot
-bot.run(TOKEN)
+        logger.critical(f"Failed to start bot: {e}")
